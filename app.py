@@ -12,6 +12,7 @@ creds_dict = st.secrets["gcp_service_account"]
 credentials = service_account.Credentials.from_service_account_info(creds_dict)
 client = bigquery.Client(credentials=credentials, project=creds_dict['project_id'])
 
+TABLE_ID = "mcmis-february.mcmisfeb.feb"
 # --- 2. DATA LOADING FUNCTION ---
 @st.cache_data(ttl=600)
 def get_data(min_v, max_v, states):
