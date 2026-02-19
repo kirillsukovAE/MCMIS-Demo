@@ -25,7 +25,7 @@ def get_data(min_v, max_v, states):
             PHY_CITY, 
             PHY_STATE 
         FROM `{TABLE_ID}`
-        WHERE TOTAL_POWER_UNITS BETWEEN {min_v} AND {max_v}
+        WHERE POWER_UNITS BETWEEN {min_v} AND {max_v}
     """
     
     # Append state filter only if states are selected
