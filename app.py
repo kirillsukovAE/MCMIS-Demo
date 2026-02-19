@@ -24,7 +24,7 @@ def get_data(min_v, max_v, states):
             TOTAL_POWER_UNITS, 
             PHY_CITY, 
             PHY_STATE 
-        FROM `{table_id}`
+        FROM `{TABLE_ID}`
         WHERE TOTAL_POWER_UNITS BETWEEN {min_v} AND {max_v}
     """
     
