@@ -22,7 +22,7 @@ def get_data(min_v, max_v, states):
         state_filter = f"AND PHY_STATE IN ({state_list})"
 
     # CHANGE THIS LINE: Put your actual BigQuery Table ID here!
-    table_id = "mcmis-company-census-february-2026"
+    table_id = "mcmis-february.mcmisfeb.feb"
 
     query = f"""
         SELECT DOT_NUMBER, LEGAL_NAME, TOTAL_POWER_UNITS, PHY_CITY, PHY_STATE 
