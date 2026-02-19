@@ -15,22 +15,26 @@ client = bigquery.Client(credentials=credentials, project=creds_dict['project_id
 # --- 2. DATA LOADING FUNCTION ---
 @st.cache_data(ttl=600)
 def get_data(min_v, max_v, states):
-    # Construct the state filter SQL
-    state_filter = ""
-    if states:
-        state_list = ", ".join([f"'{s}'" for s in states])
-        state_filter = f"AND PHY_STATE IN ({state_list})"
-
-    # CHANGE THIS LINE: Put your actual BigQuery Table ID here!
-    table_id = "mcmis-february.mcmisfeb.feb"
-
+    # Base query
     query = f"""
-        SELECT DOT_NUMBER, LEGAL_NAME, TOTAL_POWER_UNITS, PHY_CITY, PHY_STATE 
+        SELECT 
+            DOT_NUMBER, 
+            LEGAL_NAME, 
+            TOTAL_POWER_UNITS, 
+            PHY_CITY, 
+            PHY_STATE 
         FROM `{table_id}`
         WHERE TOTAL_POWER_UNITS BETWEEN {min_v} AND {max_v}
-        {state_filter}
-        LIMIT 1000
     """
+    
+    # Append state filter only if states are selected
+    if states:
+        state_list = ", ".join([f"'{s}'" for s in states])
+        query += f" AND PHY_STATE IN ({state_list})"
+    
+    # Add a final limit for performance
+    query += " LIMIT 1000"
+    
     return client.query(query).to_dataframe()
 
 # --- 3. SIDEBAR FILTERS ---
