@@ -21,7 +21,7 @@ def get_data(min_v, max_v, states):
         SELECT 
             DOT_NUMBER, 
             LEGAL_NAME, 
-            TOTAL_POWER_UNITS, 
+            POWER_UNITS, 
             PHY_CITY, 
             PHY_STATE 
         FROM `{TABLE_ID}`
