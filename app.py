@@ -3,56 +3,54 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 import pandas as pd
 
+st.set_page_config(page_title="MCMIS Fleet Finder", layout="wide")
+st.title("🚛 MCMIS Fleet Filter")
+
+# --- 1. AUTHENTICATION ---
+# This uses the secrets you pasted into the Streamlit Cloud dashboard
 creds_dict = st.secrets["gcp_service_account"]
 credentials = service_account.Credentials.from_service_account_info(creds_dict)
 client = bigquery.Client(credentials=credentials, project=creds_dict['project_id'])
 
-# Page setup
-st.set_page_config(page_title="MCMIS Fleet Finder", layout="wide")
+# --- 2. DATA LOADING FUNCTION ---
+@st.cache_data(ttl=600)
+def get_data(min_v, max_v, states):
+    # Construct the state filter SQL
+    state_filter = ""
+    if states:
+        state_list = ", ".join([f"'{s}'" for s in states])
+        state_filter = f"AND PHY_STATE IN ({state_list})"
 
-st.title("🚛 MCMIS Fleet Filter")
+    # CHANGE THIS LINE: Put your actual BigQuery Table ID here!
+    table_id = "your-project.your_dataset.your_table_id"
 
-# 1. Load Data
-@st.cache_data
-def load_mcmis_data():
-    # Replace 'mcmis_data.csv' with your actual filename
-    df = pd.read_csv('mcmis_data.csv', low_memory=False)
-    # Clean up column names and ensure vehicle count is a number
-    df['TOTAL_POWER_UNITS'] = pd.to_numeric(df['TOTAL_POWER_UNITS'], errors='coerce').fillna(0)
-    return df
+    query = f"""
+        SELECT DOT_NUMBER, LEGAL_NAME, TOTAL_POWER_UNITS, PHY_CITY, PHY_STATE 
+        FROM `{table_id}`
+        WHERE TOTAL_POWER_UNITS BETWEEN {min_v} AND {max_v}
+        {state_filter}
+        LIMIT 1000
+    """
+    return client.query(query).to_dataframe()
 
-try:
-    df = load_mcmis_data()
+# --- 3. SIDEBAR FILTERS ---
+st.sidebar.header("Filter Settings")
 
-    # 2. Sidebar Filters
-    st.sidebar.header("Filter Settings")
-    
-    # Range slider for fleet size
-    max_units = int(df['TOTAL_POWER_UNITS'].max())
-    fleet_range = st.sidebar.slider(
-        "Number of Power Units (Vehicles)",
-        0, max_units, (10, 100)
-    )
+# Vehicle Range
+fleet_range = st.sidebar.slider("Number of Vehicles", 0, 5000, (10, 100))
 
-    # State filter
-    states = sorted(df['PHY_STATE'].dropna().unique())
-    selected_states = st.sidebar.multiselect("Select States", states, default=None)
+# States (Manual list for now, or you can query unique states from BQ)
+all_states = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY']
+selected_states = st.sidebar.multiselect("Select States", all_states)
 
-    # 3. Apply Filters
-    filtered = df[
-        (df['TOTAL_POWER_UNITS'] >= fleet_range[0]) & 
-        (df['TOTAL_POWER_UNITS'] <= fleet_range[1])
-    ]
-    
-    if selected_states:
-        filtered = filtered[filtered['PHY_STATE'].isin(selected_states)]
-
-    # 4. Display Results
-    st.metric("Companies Found", len(filtered))
-    
-    # Select columns to display so it's not overwhelming
-    display_cols = ['DOT_NUMBER', 'LEGAL_NAME', 'TOTAL_POWER_UNITS', 'PHY_CITY', 'PHY_STATE']
-    st.dataframe(filtered[display_cols], use_container_width=True)
-
-except FileNotFoundError:
-    st.error("⚠️ **mcmis_data.csv not found.** Please upload your data file to this GitHub repo!")
+# --- 4. EXECUTION & DISPLAY ---
+if st.button("Find Fleets"):
+    with st.spinner("Searching BigQuery..."):
+        try:
+            df = get_data(fleet_range[0], fleet_range[1], selected_states)
+            
+            st.metric("Companies Found", len(df))
+            st.dataframe(df, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"Error: {e}")
