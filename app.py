@@ -1,5 +1,11 @@
 import streamlit as st
+from google.cloud import bigquery
+from google.oauth2 import service_account
 import pandas as pd
+
+creds_dict = st.secrets["gcp_service_account"]
+credentials = service_account.Credentials.from_service_account_info(creds_dict)
+client = bigquery.Client(credentials=credentials, project=creds_dict['project_id'])
 
 # Page setup
 st.set_page_config(page_title="MCMIS Fleet Finder", layout="wide")
