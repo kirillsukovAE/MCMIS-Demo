@@ -4,7 +4,7 @@ from google.oauth2 import service_account
 import pandas as pd
 
 st.set_page_config(page_title="MCMIS Fleet Finder", layout="wide")
-st.title("🚛 MCMIS Fleet Filter")
+st.title("🚛 MCMIS Fleet Finder")
 
 # --- 1. AUTHENTICATION ---
 # This uses the secrets you pasted into the Streamlit Cloud dashboard
