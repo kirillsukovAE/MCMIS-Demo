@@ -115,19 +115,4 @@ if st.session_state.fleets is not None:
                         st.rerun()
             st.divider()
 
-# --- 4. EXECUTION & DISPLAY ---
-if st.button("Find Fleets"):
-    with st.spinner("Searching BigQuery..."):
-        try:
-            # We store the result in session_state instead of a local 'df'
-            st.session_state.fleets = get_data(
-                fleet_range[0], 
-                fleet_range[1], 
-                selected_states,
-                show_favorites=(mode == "My Favorites")
-            )
-        except Exception as e:
-            st.error(f"Error fetching data: {e}")
-
-
 
