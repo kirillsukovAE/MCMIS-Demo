@@ -29,9 +29,7 @@ def remove_favorite(dot_number):
 
 @st.cache_data(ttl=600)
 def get_data(min_v, max_v, states, show_favorites=False):
-    # We use a LEFT JOIN to check if the company is in the favorites table
-    # f.DOT_NUMBER IS NULL means the company has NOT been favorited
-    
+    # Determine if we are filtering OUT favorites or ONLY showing favorites
     filter_condition = "f.DOT_NUMBER IS NULL" if not show_favorites else "f.DOT_NUMBER IS NOT NULL"
     
     state_clause = ""
@@ -41,11 +39,15 @@ def get_data(min_v, max_v, states, show_favorites=False):
 
     query = f"""
         SELECT 
-            t.DOT_NUMBER, t.LEGAL_NAME, t.POWER_UNITS, t.PHY_CITY, t.PHY_STATE 
+            t.DOT_NUMBER, 
+            t.LEGAL_NAME, 
+            t.TOTAL_POWER_UNITS, 
+            t.PHY_CITY, 
+            t.PHY_STATE 
         FROM `{TABLE_ID}` AS t
-        LEFT JOIN `mcmis-february.MCMISFEB.favorites` AS f 
-            ON t.DOT_NUMBER = f.DOT_NUMBER
-        WHERE t.POWER_UNITS BETWEEN {min_v} AND {max_v}
+        LEFT JOIN `mcmis-february.mcmisfeb.favorites` AS f 
+            ON CAST(t.DOT_NUMBER AS STRING) = CAST(f.DOT_NUMBER AS STRING)
+        WHERE t.TOTAL_POWER_UNITS BETWEEN {min_v} AND {max_v}
         AND {filter_condition}
         {state_clause}
         LIMIT 100
