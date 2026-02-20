@@ -43,7 +43,7 @@ def get_data(min_v, max_v, states, show_favorites=False):
         SELECT 
             t.DOT_NUMBER, t.LEGAL_NAME, t.POWER_UNITS, t.PHY_CITY, t.PHY_STATE 
         FROM `{TABLE_ID}` AS t
-        LEFT JOIN `mcmis-february.mcmisfeb.favorites` AS f 
+        LEFT JOIN `mcmis-february.MCMISFEB.favorites` AS f 
             ON t.DOT_NUMBER = f.DOT_NUMBER
         WHERE t.POWER_UNITS BETWEEN {min_v} AND {max_v}
         AND {filter_condition}
