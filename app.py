@@ -22,12 +22,15 @@ TABLE_ID = "mcmis-february.MCMISFEB.Feb"
 # --- 1. NEW FUNCTIONS FOR FAVORITES ---
 
 def add_favorite(dot_number):
-    query = f"INSERT INTO `mcmis-february.MCMISFEB.favorites` (DOT_NUMBER) VALUES ('{dot_number}')"
+    # Ensure we insert a clean string without spaces
+    clean_dot = str(dot_number).strip()
+    query = f"INSERT INTO `mcmis-february.MCMISFEB.favorites` (DOT_NUMBER) VALUES ('{clean_dot}')"
     client.query(query).result()
-    st.cache_data.clear() # Clear cache so the company disappears from search immediately
+    st.cache_data.clear()
 
 def remove_favorite(dot_number):
-    query = f"DELETE FROM `mcmis-february.MCMISFEB.favorites` WHERE DOT_NUMBER = '{dot_number}'"
+    clean_dot = str(dot_number).strip()
+    query = f"DELETE FROM `mcmis-february.MCMISFEB.favorites` WHERE TRIM(DOT_NUMBER) = '{clean_dot}'"
     client.query(query).result()
     st.cache_data.clear()
 
@@ -50,13 +53,17 @@ def get_data(min_v, max_v, states, show_favorites=False):
             t.PHY_STATE 
         FROM `{TABLE_ID}` AS t
         LEFT JOIN `mcmis-february.MCMISFEB.favorites` AS f 
-            ON CAST(t.DOT_NUMBER AS STRING) = CAST(f.DOT_NUMBER AS STRING)
+            ON TRIM(CAST(t.DOT_NUMBER AS STRING)) = TRIM(CAST(f.DOT_NUMBER AS STRING))
         WHERE t.POWER_UNITS BETWEEN {min_v} AND {max_v}
         AND {filter_condition}
         {state_clause}
         LIMIT 100
     """
     return client.query(query).to_dataframe()
+
+if st.checkbox("Debug: Show Favorites Table"):
+    fav_check = client.query("SELECT * FROM `mcmis-february.MCMISFEB.favorites`").to_dataframe()
+    st.write(fav_check)
 
 # --- 3. SIDEBAR FILTERS ---
 st.sidebar.header("Filter Settings")
