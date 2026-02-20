@@ -3,6 +3,10 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 import pandas as pd
 
+# Initialize session state for your data
+if 'fleets' not in st.session_state:
+    st.session_state.fleets = None
+
 st.set_page_config(page_title="MCMIS Fleet Finder", layout="wide")
 st.title("🚛 MCMIS Fleet Finder")
 
@@ -69,35 +73,61 @@ selected_states = st.sidebar.multiselect("Select States", all_states)
 st.sidebar.header("View Mode")
 mode = st.sidebar.radio("Show:", ["New Leads", "My Favorites"])
 
-if st.button("Refresh List"):
+# 1. Action Trigger
+# We use one button to fetch data and save it to the session
+if st.button("Find Fleets / Refresh List"):
     is_fav_view = (mode == "My Favorites")
-    df = get_data(fleet_range[0], fleet_range[1], selected_states, show_favorites=is_fav_view)
-    
-    for index, row in df.iterrows():
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            st.write(f"**{row['LEGAL_NAME']}** ({row['DOT_NUMBER']})")
-            st.caption(f"{row['PHY_CITY']}, {row['PHY_STATE']} | Units: {row['POWER_UNITS']}")
-        with col2:
-            if mode == "New Leads":
-                if st.button("⭐ Favorite", key=f"fav_{row['DOT_NUMBER']}"):
-                    add_favorite(row['DOT_NUMBER'])
-                    st.rerun()
-            else:
-                if st.button("❌ Unfavorite", key=f"unfav_{row['DOT_NUMBER']}"):
-                    remove_favorite(row['DOT_NUMBER'])
-                    st.rerun()
-        st.divider()
+    with st.spinner("Fetching data..."):
+        st.session_state.fleets = get_data(
+            fleet_range[0], 
+            fleet_range[1], 
+            selected_states, 
+            show_favorites=is_fav_view
+        )
 
+# 2. Persistent Display Loop
+# This stays visible even after you click a Favorite button because it's tied 
+# to session_state, not the button click itself.
+if st.session_state.fleets is not None:
+    df = st.session_state.fleets
+    
+    if df.empty:
+        st.info("No companies found matching these filters.")
+    else:
+        st.metric("Companies Found", len(df))
+        
+        for index, row in df.iterrows():
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                st.write(f"**{row['LEGAL_NAME']}** ({row['DOT_NUMBER']})")
+                st.caption(f"{row['PHY_CITY']}, {row['PHY_STATE']} | Units: {row['POWER_UNITS']}")
+            with col2:
+                if mode == "New Leads":
+                    # The unique 'key' is vital so Streamlit doesn't get confused
+                    if st.button("⭐ Favorite", key=f"fav_{row['DOT_NUMBER']}"):
+                        add_favorite(row['DOT_NUMBER'])
+                        # We don't need to manually clear state here because st.rerun() 
+                        # will force the app to re-fetch the 'clean' list
+                        st.rerun()
+                else:
+                    if st.button("❌ Unfavorite", key=f"unfav_{row['DOT_NUMBER']}"):
+                        remove_favorite(row['DOT_NUMBER'])
+                        st.rerun()
+            st.divider()
 
 # --- 4. EXECUTION & DISPLAY ---
 if st.button("Find Fleets"):
     with st.spinner("Searching BigQuery..."):
         try:
-            df = get_data(fleet_range[0], fleet_range[1], selected_states)
-            
-            st.metric("Companies Found", len(df))
-            st.dataframe(df, use_container_width=True)
-            
+            # We store the result in session_state instead of a local 'df'
+            st.session_state.fleets = get_data(
+                fleet_range[0], 
+                fleet_range[1], 
+                selected_states,
+                show_favorites=(mode == "My Favorites")
+            )
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"Error fetching data: {e}")
+
+
+
