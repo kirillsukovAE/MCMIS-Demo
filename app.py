@@ -77,7 +77,7 @@ if st.button("Refresh List"):
         col1, col2 = st.columns([4, 1])
         with col1:
             st.write(f"**{row['LEGAL_NAME']}** ({row['DOT_NUMBER']})")
-            st.caption(f"{row['PHY_CITY']}, {row['PHY_STATE']} | Units: {row['TOTAL_POWER_UNITS']}")
+            st.caption(f"{row['PHY_CITY']}, {row['PHY_STATE']} | Units: {row['POWER_UNITS']}")
         with col2:
             if mode == "New Leads":
                 if st.button("⭐ Favorite", key=f"fav_{row['DOT_NUMBER']}"):
