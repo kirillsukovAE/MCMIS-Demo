@@ -80,20 +80,32 @@ selected_states = st.sidebar.multiselect("Select States", all_states)
 st.sidebar.header("View Mode")
 mode = st.sidebar.radio("Show:", ["New Leads", "My Favorites"])
 
-# Check if the user switched modes; if so, clear the session so it doesn't show old data
+# A. Initialize state trackers for immediate UI feedback
+if 'just_favorited' not in st.session_state:
+    st.session_state.just_favorited = set()
+if 'just_unfavorited' not in st.session_state:
+    st.session_state.just_unfavorited = set()
+
+# B. Handle Mode Switching
 if "last_mode" not in st.session_state:
     st.session_state.last_mode = mode
 
 if st.session_state.last_mode != mode:
-    st.session_state.fleets = None # Clear old data
-    st.session_state.last_mode = mode # Update current mode
-    st.rerun() # Force app to refresh and show an empty state or auto-fetch
+    st.session_state.fleets = None 
+    st.session_state.last_mode = mode
+    # Clear the temporary toggles when moving between main tabs
+    st.session_state.just_favorited = set()
+    st.session_state.just_unfavorited = set()
+    st.rerun()
 
 # 1. Action Trigger
 if st.button("Find Fleets / Refresh List"):
+    # Clear temporary toggles on a fresh database pull
+    st.session_state.just_favorited = set()
+    st.session_state.just_unfavorited = set()
+    
     is_fav_view = (mode == "My Favorites")
     with st.spinner("Fetching data..."):
-        # This saves the specific list (Leads or Favs) to memory
         st.session_state.fleets = get_data(
             fleet_range[0], 
             fleet_range[1], 
@@ -111,18 +123,32 @@ if st.session_state.fleets is not None:
         st.metric(f"Companies in {mode}", len(df))
         
         for index, row in df.iterrows():
+            dot = str(row['DOT_NUMBER']).strip()
             col1, col2 = st.columns([4, 1])
+            
+            # Logic to determine if we should show Favorite or Unfavorite button
+            # This checks the DB source AND the local "just changed" memory
+            is_fav = (mode == "My Favorites" or dot in st.session_state.just_favorited)
+            if dot in st.session_state.just_unfavorited:
+                is_fav = False
+
             with col1:
-                st.write(f"**{row['LEGAL_NAME']}** ({row['DOT_NUMBER']})")
+                st.write(f"**{row['LEGAL_NAME']}** ({dot})")
                 st.caption(f"{row['PHY_CITY']}, {row['PHY_STATE']} | Units: {row['POWER_UNITS']}")
             
             with col2:
-                if mode == "New Leads":
-                    if st.button("⭐ Favorite", key=f"fav_{row['DOT_NUMBER']}"):
-                        add_favorite(row['DOT_NUMBER'])
-                        st.rerun() # This will now call get_data again and remove it from view
+                if is_fav:
+                    if st.button("❌ Unfavorite", key=f"unfav_{dot}"):
+                        remove_favorite(dot)
+                        st.session_state.just_unfavorited.add(dot)
+                        if dot in st.session_state.just_favorited:
+                            st.session_state.just_favorited.remove(dot)
+                        st.rerun()
                 else:
-                    if st.button("❌ Unfavorite", key=f"unfav_{row['DOT_NUMBER']}"):
-                        remove_favorite(row['DOT_NUMBER'])
+                    if st.button("⭐ Favorite", key=f"fav_{dot}"):
+                        add_favorite(dot)
+                        st.session_state.just_favorited.add(dot)
+                        if dot in st.session_state.just_unfavorited:
+                            st.session_state.just_unfavorited.remove(dot)
                         st.rerun()
             st.divider()
