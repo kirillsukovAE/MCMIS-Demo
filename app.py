@@ -80,11 +80,20 @@ selected_states = st.sidebar.multiselect("Select States", all_states)
 st.sidebar.header("View Mode")
 mode = st.sidebar.radio("Show:", ["New Leads", "My Favorites"])
 
+# Check if the user switched modes; if so, clear the session so it doesn't show old data
+if "last_mode" not in st.session_state:
+    st.session_state.last_mode = mode
+
+if st.session_state.last_mode != mode:
+    st.session_state.fleets = None # Clear old data
+    st.session_state.last_mode = mode # Update current mode
+    st.rerun() # Force app to refresh and show an empty state or auto-fetch
+
 # 1. Action Trigger
-# We use one button to fetch data and save it to the session
 if st.button("Find Fleets / Refresh List"):
     is_fav_view = (mode == "My Favorites")
     with st.spinner("Fetching data..."):
+        # This saves the specific list (Leads or Favs) to memory
         st.session_state.fleets = get_data(
             fleet_range[0], 
             fleet_range[1], 
@@ -93,33 +102,27 @@ if st.button("Find Fleets / Refresh List"):
         )
 
 # 2. Persistent Display Loop
-# This stays visible even after you click a Favorite button because it's tied 
-# to session_state, not the button click itself.
 if st.session_state.fleets is not None:
     df = st.session_state.fleets
     
     if df.empty:
-        st.info("No companies found matching these filters.")
+        st.info(f"No results found in {mode}.")
     else:
-        st.metric("Companies Found", len(df))
+        st.metric(f"Companies in {mode}", len(df))
         
         for index, row in df.iterrows():
             col1, col2 = st.columns([4, 1])
             with col1:
                 st.write(f"**{row['LEGAL_NAME']}** ({row['DOT_NUMBER']})")
                 st.caption(f"{row['PHY_CITY']}, {row['PHY_STATE']} | Units: {row['POWER_UNITS']}")
+            
             with col2:
                 if mode == "New Leads":
-                    # The unique 'key' is vital so Streamlit doesn't get confused
                     if st.button("⭐ Favorite", key=f"fav_{row['DOT_NUMBER']}"):
                         add_favorite(row['DOT_NUMBER'])
-                        # We don't need to manually clear state here because st.rerun() 
-                        # will force the app to re-fetch the 'clean' list
-                        st.rerun()
+                        st.rerun() # This will now call get_data again and remove it from view
                 else:
                     if st.button("❌ Unfavorite", key=f"unfav_{row['DOT_NUMBER']}"):
                         remove_favorite(row['DOT_NUMBER'])
                         st.rerun()
             st.divider()
-
-
