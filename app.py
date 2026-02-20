@@ -41,13 +41,13 @@ def get_data(min_v, max_v, states, show_favorites=False):
         SELECT 
             t.DOT_NUMBER, 
             t.LEGAL_NAME, 
-            t.TOTAL_POWER_UNITS, 
+            t.POWER_UNITS, 
             t.PHY_CITY, 
             t.PHY_STATE 
         FROM `{TABLE_ID}` AS t
-        LEFT JOIN `mcmis-february.mcmisfeb.favorites` AS f 
+        LEFT JOIN `mcmis-february.MCMISFEB.favorites` AS f 
             ON CAST(t.DOT_NUMBER AS STRING) = CAST(f.DOT_NUMBER AS STRING)
-        WHERE t.TOTAL_POWER_UNITS BETWEEN {min_v} AND {max_v}
+        WHERE t.POWER_UNITS BETWEEN {min_v} AND {max_v}
         AND {filter_condition}
         {state_clause}
         LIMIT 100
