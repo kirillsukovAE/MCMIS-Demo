@@ -13,30 +13,69 @@ credentials = service_account.Credentials.from_service_account_info(creds_dict)
 client = bigquery.Client(credentials=credentials, project=creds_dict['project_id'])
 
 TABLE_ID = "mcmis-february.MCMISFEB.Feb"
-# --- 2. DATA LOADING FUNCTION ---
+
+
+# --- 1. NEW FUNCTIONS FOR FAVORITES ---
+
+def add_favorite(dot_number):
+    query = f"INSERT INTO `mcmis-february.MCMISFEB.favorites` (DOT_NUMBER) VALUES ('{dot_number}')"
+    client.query(query).result()
+    st.cache_data.clear() # Clear cache so the company disappears from search immediately
+
+def remove_favorite(dot_number):
+    query = f"DELETE FROM `mcmis-february.MCMISFEB.favorites` WHERE DOT_NUMBER = '{dot_number}'"
+    client.query(query).result()
+    st.cache_data.clear()
+
 @st.cache_data(ttl=600)
-def get_data(min_v, max_v, states):
-    # Base query
-    query = f"""
-        SELECT 
-            DOT_NUMBER, 
-            LEGAL_NAME, 
-            POWER_UNITS, 
-            PHY_CITY, 
-            PHY_STATE 
-        FROM `{TABLE_ID}`
-        WHERE POWER_UNITS BETWEEN {min_v} AND {max_v}
-    """
+def get_data(min_v, max_v, states, show_favorites=False):
+    # We use a LEFT JOIN to check if the company is in the favorites table
+    # f.DOT_NUMBER IS NULL means the company has NOT been favorited
     
-    # Append state filter only if states are selected
+    filter_condition = "f.DOT_NUMBER IS NULL" if not show_favorites else "f.DOT_NUMBER IS NOT NULL"
+    
+    state_clause = ""
     if states:
         state_list = ", ".join([f"'{s}'" for s in states])
-        query += f" AND PHY_STATE IN ({state_list})"
-    
-    # Add a final limit for performance
-    query += " LIMIT 1000"
-    
+        state_clause = f"AND t.PHY_STATE IN ({state_list})"
+
+    query = f"""
+        SELECT 
+            t.DOT_NUMBER, t.LEGAL_NAME, t.POWER_UNITS, t.PHY_CITY, t.PHY_STATE 
+        FROM `{TABLE_ID}` AS t
+        LEFT JOIN `mcmis-february.mcmisfeb.favorites` AS f 
+            ON t.DOT_NUMBER = f.DOT_NUMBER
+        WHERE t.POWER_UNITS BETWEEN {min_v} AND {max_v}
+        AND {filter_condition}
+        {state_clause}
+        LIMIT 100
+    """
     return client.query(query).to_dataframe()
+
+# --- 3. UI IMPLEMENTATION ---
+st.sidebar.header("View Mode")
+mode = st.sidebar.radio("Show:", ["New Leads", "My Favorites"])
+
+if st.button("Refresh List"):
+    is_fav_view = (mode == "My Favorites")
+    df = get_data(fleet_range[0], fleet_range[1], selected_states, show_favorites=is_fav_view)
+    
+    for index, row in df.iterrows():
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            st.write(f"**{row['LEGAL_NAME']}** ({row['DOT_NUMBER']})")
+            st.caption(f"{row['PHY_CITY']}, {row['PHY_STATE']} | Units: {row['TOTAL_POWER_UNITS']}")
+        with col2:
+            if mode == "New Leads":
+                if st.button("⭐ Favorite", key=f"fav_{row['DOT_NUMBER']}"):
+                    add_favorite(row['DOT_NUMBER'])
+                    st.rerun()
+            else:
+                if st.button("❌ Unfavorite", key=f"unfav_{row['DOT_NUMBER']}"):
+                    remove_favorite(row['DOT_NUMBER'])
+                    st.rerun()
+        st.divider()
+
 
 # --- 3. SIDEBAR FILTERS ---
 st.sidebar.header("Filter Settings")
