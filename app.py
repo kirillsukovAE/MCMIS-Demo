@@ -54,6 +54,17 @@ def get_data(min_v, max_v, states, show_favorites=False):
     """
     return client.query(query).to_dataframe()
 
+# --- 3. SIDEBAR FILTERS ---
+st.sidebar.header("Filter Settings")
+
+# Vehicle Range
+fleet_range = st.sidebar.slider("Number of Vehicles", 0, 5000, (10, 100))
+
+# States (Manual list for now, or you can query unique states from BQ)
+all_states = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY']
+selected_states = st.sidebar.multiselect("Select States", all_states)
+
+
 # --- 3. UI IMPLEMENTATION ---
 st.sidebar.header("View Mode")
 mode = st.sidebar.radio("Show:", ["New Leads", "My Favorites"])
@@ -78,16 +89,6 @@ if st.button("Refresh List"):
                     st.rerun()
         st.divider()
 
-
-# --- 3. SIDEBAR FILTERS ---
-st.sidebar.header("Filter Settings")
-
-# Vehicle Range
-fleet_range = st.sidebar.slider("Number of Vehicles", 0, 5000, (10, 100))
-
-# States (Manual list for now, or you can query unique states from BQ)
-all_states = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY']
-selected_states = st.sidebar.multiselect("Select States", all_states)
 
 # --- 4. EXECUTION & DISPLAY ---
 if st.button("Find Fleets"):
